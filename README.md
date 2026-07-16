@@ -1,168 +1,117 @@
-# 🤖 LLM ATS Resume Screener
+# AI Resume Analyser
 
-An AI-powered Applicant Tracking System (ATS) that automatically analyzes and ranks resumes against a job description using Large Language Models (LLMs).
+Screens a folder of resumes against a job description using an LLM, and
+returns a ranked shortlist of the strongest and weakest candidates.
 
-The project extracts structured information from both job descriptions and resumes, compares candidates against hiring requirements, and ranks them based on their overall suitability.
+Given a job description and a batch of resumes (PDF or DOCX), the tool:
 
----
+1. Extracts structured requirements from the job description (required skills,
+   preferred skills, minimum experience, education requirements).
+2. Parses each resume into a structured profile (skills, experience,
+   education, projects, certifications) — regardless of how the resume is
+   formatted or which section headings it uses.
+3. Scores each candidate against the job description and produces a
+   0–100 match percentage with a breakdown of matching/missing skills and
+   a short verdict.
+4. Ranks all candidates and prints the top and bottom performers.
 
-## 🚀 Features
+## Why this exists
 
-- 📄 Extracts text from PDF and DOCX resumes
-- 🧠 Uses Groq LLM for intelligent resume parsing
-- 📋 Parses job descriptions into structured data
-- 🎯 Matches resumes against job requirements
-- 📊 Generates an overall match score (0–100)
-- 🏆 Ranks all candidates from best to worst
-- 📌 Displays top and lowest matching candidates
-- ⚡ Supports processing multiple resumes in one run
+Manually screening dozens of resumes against a job description is slow and
+inconsistent. This tool automates the first-pass screen so a recruiter can
+focus their time on the shortlist, not the pile.
 
----
+## Tech stack
 
-## 🛠 Tech Stack
+- [Groq](https://groq.com/) (`llama-3.3-70b-versatile`) for fast, low-cost LLM inference
+- [Pydantic](https://docs.pydantic.dev/) for structured, validated LLM outputs (JSON schema-constrained generation)
+- `pypdf` / `python-docx` for resume text extraction
 
-- Python 3.11+
-- Groq API
-- Pydantic
-- python-docx
-- pypdf
-
----
-
-## 📂 Project Structure
-
-```
-LLM-ATS-Resume-Screener/
-│
-├── resume_analyser.py
-├── requirements.txt
-├── .env
-├── README.md
-└── Resumes/
-    ├── Resume1.pdf
-    ├── Resume2.pdf
-    └── Resume3.docx
-```
-
----
-
-## ⚙️ Installation
-
-Clone the repository
+## Setup
 
 ```bash
-git clone https://github.com/yourusername/LLM-ATS-Resume-Screener.git
-
-cd LLM-ATS-Resume-Screener
-```
-
-Create a virtual environment
-
-```bash
-python -m venv .venv
-```
-
-Activate it
-
-### Windows
-
-```bash
-.venv\Scripts\activate
-```
-
-### Linux / macOS
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies
-
-```bash
+git clone https://github.com/<your-username>/resume-analyser.git
+cd resume-analyser
 pip install -r requirements.txt
+cp .env.example .env
+# then edit .env and add your Groq API key
 ```
 
----
+Get a free Groq API key at [console.groq.com](https://console.groq.com/).
 
-## 🔑 Environment Variables
+## Usage
 
-Create a `.env` file in the project root.
-
-```env
-GROQ_API_KEY=your_groq_api_key
-```
-
----
-
-## ▶️ Usage
-
-Place all resumes inside your resume folder.
-
-Run the application
+1. Put resumes (`.pdf` or `.docx`) in the `resumes/` folder.
+2. Put your job description in `job_description.txt` (a sample Amazon SDE-I
+   posting is included so the repo runs out of the box).
+3. Run:
 
 ```bash
 python resume_analyser.py
 ```
 
-The application will:
+### Options
 
-- Parse the job description
-- Parse every resume
-- Compare resumes against the job requirements
-- Generate an overall score
-- Rank candidates from highest to lowest
+```bash
+python resume_analyser.py \
+  --resumes ./resumes \
+  --job-description ./job_description.txt \
+  --top 3 \
+  --bottom 3 \
+  --output results.json
+```
 
----
+| Flag | Description | Default |
+|---|---|---|
+| `--resumes` | Folder of resume files | `./resumes` |
+| `--job-description` | Path to job description text file | `./job_description.txt` |
+| `--top` | Number of top candidates to display | `2` |
+| `--bottom` | Number of lowest-scoring candidates to display | `2` |
+| `--output` | Save full results as JSON | (not saved) |
+| `--sleep` | Seconds between LLM calls, to stay under rate limits | `5` |
 
-## 📊 Sample Output
+## Sample output
 
 ```
-Minimum Experience: 1.0
+Job role detected: Software Development Engineer I
+Minimum experience: None
+Education requirements: ["Bachelor's degree in Computer Science or related STEM field"]
 
-Education Requirements:
-['Bachelor's Degree']
+Processing: jane_doe.pdf
+  Score: 82.0
+Processing: john_smith.docx
+  Score: 45.0
 
-Processing: John_Doe.pdf
-Score: 92
-
-Processing: Jane_Smith.pdf
-Score: 84
-
-Processing: Alex.pdf
-Score: 61
-
+========================================
 TOP CANDIDATES
+========================================
 
-John Doe - 92%
-Jane Smith - 84%
-
-LOWEST CANDIDATES
-
-Alex - 61%
+Jane Doe — 82.0%
+{
+  "candidate_name": "Jane Doe",
+  "matching_skills": ["Python", "AWS", "distributed systems"],
+  "missing_skills": ["Go"],
+  "experience_requirement_met": true,
+  "verdict": "Strong match, recommend for interview."
+}
 ```
 
----
+## Notes
 
-## 📌 Future Improvements
+- Scanned/image-only PDFs with no extractable text are skipped automatically.
+- If one resume fails to process (bad file, malformed LLM output), the tool
+  logs the error and continues with the rest of the batch.
+- Real resumes contain personal data — the `resumes/` folder is gitignored
+  so you don't accidentally commit anyone's PII.
 
-- Export results to CSV/Excel
-- Streamlit web interface
-- Upload resumes through UI
-- ATS keyword highlighting
-- Semantic similarity using embeddings
-- Deterministic scoring algorithm
-- Support for scanned PDFs using OCR
+## Possible extensions
 
----
+- Swap the CLI for a small web UI (FastAPI + simple frontend)
+- Add per-category scoring (skills / experience / projects / education) with
+  matched vs. missing items, similar to a structured rubric
+- Support multiple job descriptions run against the same resume pool
+- Add an eval harness comparing LLM scores against human-labeled ground truth
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License.
-
----
-
-## 👨‍💻 Author
-
-**Aditya**
-
-If you found this project useful, consider giving it a ⭐ on GitHub.
+MIT
