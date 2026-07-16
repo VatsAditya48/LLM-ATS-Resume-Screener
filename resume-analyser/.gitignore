@@ -1,0 +1,21 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Resumes are personal data - don't commit real ones
+resumes/*
+!resumes/.gitkeep
+
+# Output
+results.json
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
